@@ -1,0 +1,87 @@
+name: Revert to a Release
+on:
+  workflow_dispatch:
+    inputs:
+      # e.g.4426011160, can be found from github action workflow web page URL(e.g. https://github.com/Vacasa/owners-portal-web/actions/runs/4426011160)
+      workflowRunId:
+        description: Workflow run ID which contain the build artifact.
+        required: true
+      environment:
+        description: Dev/stage/prod environment
+        required: true
+        type: choice
+        options:
+          - dev
+          - stage
+          - prod
+jobs:
+  revert-to-latest-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set AWS Account
+        shell: bash
+        run: |
+          if [ "${{ inputs.environment }}" == "prod" ]; then
+            AWS_ACCOUNT=$PROD_AWS_ACCOUNT
+          else if [ "${{ inputs.environment }}" == "stage" ]; then
+            AWS_ACCOUNT=$STAGE_AWS_ACCOUNT
+          else
+            AWS_ACCOUNT=$DEV_AWS_ACCOUNT
+          fi
+        env:
+          DEV_AWS_ACCOUNT: 478510114397
+          STAGE_AWS_ACCOUNT: 606280406507
+          PROD_AWS_ACCOUNT: 153797131608
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.SVC_AWS_OWNER_ACCESS_KEY }}
+          aws-secret-access-key: ${{ secrets.SVC_AWS_OWNER_SECRET_KEY }}
+          aws-region: us-west-2
+          role-to-assume: arn:aws:iam::$AWS_ACCOUNT:role/InfrastructureManagementRole
+          role-skip-session-tagging: true
+          role-duration-seconds: 1200
+      - name: Download artifact from specified workflow
+        shell: bash
+        run: |
+          gh run download "$workflowRunId" -n build-$environment
+        env:
+          workflowRunId: ${{ inputs.workflowRunId }}
+          environment: ${{ inputs.environment }}
+      - name: Unarchive artifact
+        run: unzip build.zip -d build
+        shell: bash
+      # Only remove source map for Prod before deployment
+      - name: Remove generated source map files
+        shell: bash
+        run: |
+          if [ "${{ inputs.environment }}" == "prod" ]; then
+            find ./build -type f -name '*.map' -delete
+            ls -R ./build
+          else
+            echo "Skip removing generated source map files"
+          fi
+
+      - name: Deploy to S3
+        shell: bash
+        run: |
+          if [ "${{ inputs.environment }}" == "prod" ]; then
+            bucket=static-web.owners.vacasa.com
+          else if [ "${{ inputs.environment }}" == "stage" ]; then
+            bucket=static-web.owners.vacasastage.com
+          else
+            bucket=static-web.owners.vacasadev.com
+          fi
+          aws s3 cp ./build s3://$bucket \
+            --recursive \
+            --cache-control public,max-age=300
+          aws s3 sync ./build s3://$bucket \
+            --delete \
+            --cache-control public,max-age=300
+          aws s3 cp ./build s3://$bucket \
+            --exclude "*" \
+            --include "static/css/*" \
+            --include "static/js/*" \
+            --include "static/media/*" \
+            --recursive \
+            --cache-control public,max-age=100000000

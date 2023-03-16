@@ -1,0 +1,69 @@
+name: Switch to Maintenance Mode
+on:
+  workflow_dispatch:
+    inputs:
+      message:
+        description: Maintenance page message.
+        required: true
+        default: "We will be live again on 1/10, 2am PST. Thanks for your patience."
+      environment:
+        description: Dev/stage/prod environment
+        required: true
+        type: choice
+        options:
+          - dev
+          - stage
+          - prod
+jobs:
+  switch-to-maintenance:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v2
+      - uses: kanga333/variable-mapper@master
+        id: export
+        with:
+          key: ${{ inputs.environment }}
+          map: |
+            {
+              "dev": {
+                "aws-account": "478510114397",
+                "bucket": "owner-portal-web-pr-1993"
+              },
+              "stage": {
+                "aws-account": "606280406507",
+                "bucket": "owner-portal-web-pr-1993"
+              },
+              "prod": {
+                "aws-account": "153797131608",
+                "bucket": "owner-portal-web-pr-1993"
+              }
+            }
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.SVC_AWS_OWNER_ACCESS_KEY }}
+          aws-secret-access-key: ${{ secrets.SVC_AWS_OWNER_SECRET_KEY }}
+          aws-region: us-west-2
+          role-to-assume: arn:aws:iam::${{ env.aws-account }}:role/InfrastructureManagementRole
+          role-skip-session-tagging: true
+          role-duration-seconds: 1200
+      - name: Replace Message in maintenance-mode/index.html file
+        uses: jacobtomlinson/gha-find-replace@v3
+        with:
+          find: "We will be live again on x/x, xam PST. Thanks for your patience."
+          replace: ${{ inputs.message }}
+          include: "maintenance-mode/index.html"
+      - name: Check maintenance-mode/index.html file
+        shell: bash
+        run: |
+          cat maintenance-mode/index.html
+      - name: Deploy to S3
+        shell: bash
+        run: |
+          aws s3 cp ./maintenance-mode s3://${{ env.bucket }} \
+                        --recursive \
+                        --cache-control max-age=0,no-cache,no-store,must-revalidate
+          aws s3 sync ./maintenance-mode s3://${{ env.bucket }} \
+            --delete \
+            --cache-control max-age=0,no-cache,no-store,must-revalidate
