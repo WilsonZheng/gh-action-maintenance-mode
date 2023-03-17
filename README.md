@@ -1,3 +1,3 @@
 # Github Action to Deploy Maintenance Mode in S3
-![Jest coverage](https://github.com/WilsonZheng/gh-action-maintenance-mode/blob/storage/badges/badges/coverage.svg)
+![Jest coverage](https://github.com/WilsonZheng/gh-action-maintenance-mode/blob/storage/badges/badges/coverage-jest%20coverage.svg)
 ![Branch coverage](https://github.com/WilsonZheng/gh-action-maintenance-mode/blob/storage/badges/badges/coverage-branches.svg)
