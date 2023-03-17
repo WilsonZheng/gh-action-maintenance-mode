@@ -28,15 +28,15 @@ jobs:
             {
               "dev": {
                 "aws-account": "478510114397",
-                "bucket": "owner-portal-web-pr-1993"
+                "bucket": "static-web.owners.vacasadev.com"
               },
               "stage": {
                 "aws-account": "606280406507",
-                "bucket": "owner-portal-web-pr-1993"
+                "bucket": "static-web.owners.vacasastage.com"
               },
               "prod": {
                 "aws-account": "153797131608",
-                "bucket": "owner-portal-web-pr-1993"
+                "bucket": "static-web.owners.vacasa.com"
               }
             }
       - name: Configure AWS Credentials
