@@ -15,7 +15,7 @@ jobs:
     - name: Checkout master branch
       run: git checkout master && git pull
     - name: Checkout badges branch
-      run: git checkout badges
+      run: git checkout storage/badges
     - name: Rebase badges on master
       run: git merge master
     - name: Push badges branch
