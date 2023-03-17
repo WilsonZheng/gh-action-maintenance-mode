@@ -17,7 +17,7 @@ jobs:
     - name: Checkout badges branch
       run: git checkout storage/badges
     - name: Rebase badges on master
-      run: git merge origin master --allow-unrelated-histories
+      run: git reset --hard origin/master
     - name: Push badges branch
       run: git push -f
     - name: Npm install
